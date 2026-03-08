@@ -1,3 +1,9 @@
+/**
+ * Analytics Page - Detailed traffic analytics
+ */
+
+import { useTraffic } from '../context/TrafficContext'
+import { Card, TrafficChart } from '../components'
 import { 
   BarChart, 
   Bar, 
@@ -9,241 +15,192 @@ import {
   PieChart,
   Pie,
   Cell,
-  LineChart,
-  Line
 } from 'recharts'
-import { useTraffic } from '../context/TrafficContext'
-import Card from '../components/common/Card'
-import TrafficChart from '../components/charts/TrafficChart'
-import { TrendingUp, BarChart3, PieChart as PieChartIcon, Activity } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus, Clock, Target } from 'lucide-react'
+import { CHART_COLORS, TRAFFIC_COLORS } from '../utils/constants'
 
-// Mock data for analytics
-const weeklyData = [
-  { day: 'Mon', vehicles: 1245, pedestrians: 3420, cyclists: 567 },
-  { day: 'Tue', vehicles: 1456, pedestrians: 3210, cyclists: 623 },
-  { day: 'Wed', vehicles: 1367, pedestrians: 3540, cyclists: 589 },
-  { day: 'Thu', vehicles: 1523, pedestrians: 3680, cyclists: 612 },
-  { day: 'Fri', vehicles: 1678, pedestrians: 4120, cyclists: 701 },
-  { day: 'Sat', vehicles: 987, pedestrians: 4560, cyclists: 823 },
-  { day: 'Sun', vehicles: 756, pedestrians: 3890, cyclists: 756 },
-]
+export default function Analytics() {
+  const { cameras, totals, historicalData } = useTraffic()
 
-const congestionData = [
-  { name: 'Low', value: 45, color: '#22c55e' },
-  { name: 'Medium', value: 35, color: '#f59e0b' },
-  { name: 'High', value: 20, color: '#ef4444' },
-]
+  // Traffic level distribution
+  const trafficDistribution = [
+    { name: 'Low', value: cameras.filter(c => c.trafficLevel === 'low').length, color: TRAFFIC_COLORS.low.primary },
+    { name: 'Medium', value: cameras.filter(c => c.trafficLevel === 'medium').length, color: TRAFFIC_COLORS.medium.primary },
+    { name: 'High', value: cameras.filter(c => c.trafficLevel === 'high').length, color: TRAFFIC_COLORS.high.primary },
+  ]
 
-const peakHoursData = [
-  { hour: '06:00', count: 234 },
-  { hour: '08:00', count: 567 },
-  { hour: '10:00', count: 423 },
-  { hour: '12:00', count: 512 },
-  { hour: '14:00', count: 489 },
-  { hour: '16:00', count: 534 },
-  { hour: '18:00', count: 612 },
-  { hour: '20:00', count: 378 },
-  { hour: '22:00', count: 234 },
-]
+  // Camera comparison data
+  const cameraComparison = cameras
+    .filter(c => c.status === 'online')
+    .map(c => ({
+      name: c.name.length > 10 ? c.name.substring(0, 10) + '...' : c.name,
+      vehicles: c.vehicles,
+      pedestrians: c.pedestrians,
+      cyclists: c.cyclists,
+    }))
+    .sort((a, b) => b.vehicles - a.vehicles)
+    .slice(0, 6)
 
-const CustomTooltip = ({ active, payload, label }) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-dark-card border border-dark-border rounded-lg p-3 shadow-xl">
-        <p className="text-gray-400 text-sm mb-2">{label}</p>
-        {payload.map((entry, index) => (
-          <div key={index} className="flex items-center gap-2">
-            <div 
-              className="w-2 h-2 rounded-full" 
-              style={{ backgroundColor: entry.color }} 
-            />
-            <span className="text-gray-300 text-sm capitalize">{entry.dataKey || entry.name}:</span>
-            <span className="text-white font-medium text-sm">{entry.value}</span>
-          </div>
-        ))}
-      </div>
-    )
-  }
-  return null
-}
+  // Peak hour calculation
+  const peakHour = historicalData.reduce((max, item) => 
+    (item.vehicles + item.pedestrians) > (max.vehicles + max.pedestrians) ? item : max
+  , historicalData[0] || { time: 'N/A', vehicles: 0, pedestrians: 0 })
 
-function Analytics() {
-  const { totals, cameras } = useTraffic()
-
-  // Calculate average per camera
-  const avgVehicles = Math.round(totals.vehicles / totals.activeCameras)
-  const avgPedestrians = Math.round(totals.pedestrians / totals.activeCameras)
+  // Average calculations
+  const avgVehicles = Math.round(historicalData.reduce((sum, item) => sum + item.vehicles, 0) / historicalData.length)
+  const avgPedestrians = Math.round(historicalData.reduce((sum, item) => sum + item.pedestrians, 0) / historicalData.length)
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Page header */}
+    <div className="space-y-6">
+      {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-display font-bold text-white">
-          Traffic Analytics
-        </h1>
-        <p className="text-gray-400 mt-1">
-          Detailed analysis and insights from traffic data
-        </p>
+        <h1 className="text-2xl font-bold text-white">Analytics</h1>
+        <p className="text-gray-400 mt-1">Detailed traffic analysis and insights</p>
       </div>
 
-      {/* Key metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card glow>
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary-600/20 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-primary-400" />
+            <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-blue-400" />
             </div>
             <div>
-              <p className="text-2xl font-display font-bold text-white">{avgVehicles}</p>
-              <p className="text-xs text-gray-500">Avg Vehicles/Camera</p>
+              <p className="text-sm text-gray-400">Avg Vehicles/hr</p>
+              <p className="text-xl font-bold text-white">{avgVehicles}</p>
             </div>
           </div>
         </Card>
-        <Card glow>
+        
+        <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-traffic-low/20 flex items-center justify-center">
-              <Activity className="w-5 h-5 text-traffic-low" />
+            <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-green-400" />
             </div>
             <div>
-              <p className="text-2xl font-display font-bold text-white">{avgPedestrians}</p>
-              <p className="text-xs text-gray-500">Avg Pedestrians/Camera</p>
+              <p className="text-sm text-gray-400">Avg Pedestrians/hr</p>
+              <p className="text-xl font-bold text-white">{avgPedestrians}</p>
             </div>
           </div>
         </Card>
-        <Card glow>
+        
+        <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-traffic-medium/20 flex items-center justify-center">
-              <BarChart3 className="w-5 h-5 text-traffic-medium" />
+            <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+              <Clock className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <p className="text-2xl font-display font-bold text-white">18:00</p>
-              <p className="text-xs text-gray-500">Peak Hour</p>
+              <p className="text-sm text-gray-400">Peak Hour</p>
+              <p className="text-xl font-bold text-white">{peakHour.time}</p>
             </div>
           </div>
         </Card>
-        <Card glow>
+        
+        <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-traffic-high/20 flex items-center justify-center">
-              <PieChartIcon className="w-5 h-5 text-traffic-high" />
+            <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+              <Target className="w-5 h-5 text-purple-400" />
             </div>
             <div>
-              <p className="text-2xl font-display font-bold text-white">20%</p>
-              <p className="text-xs text-gray-500">High Congestion</p>
+              <p className="text-sm text-gray-400">Total Today</p>
+              <p className="text-xl font-bold text-white">{totals.vehicles + totals.pedestrians + totals.cyclists}</p>
             </div>
           </div>
         </Card>
       </div>
 
-      {/* Charts row */}
+      {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Weekly comparison */}
-        <Card>
-          <Card.Header>
-            <Card.Title>Weekly Traffic Comparison</Card.Title>
-          </Card.Header>
-          <Card.Content className="h-[300px]">
+        {/* Traffic Over Time */}
+        <TrafficChart title="Traffic Pattern (24h)" height={280} />
+
+        {/* Camera Comparison */}
+        <Card className="p-5">
+          <h3 className="text-lg font-semibold text-white mb-4">Top Cameras by Vehicles</h3>
+          <div style={{ height: 280 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={weeklyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
-                <XAxis 
-                  dataKey="day" 
-                  stroke="#6b7280" 
-                  tick={{ fill: '#6b7280', fontSize: 11 }}
-                  axisLine={{ stroke: '#1f2937' }}
-                  tickLine={false}
+              <BarChart data={cameraComparison} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis type="number" stroke="#9ca3af" fontSize={12} />
+                <YAxis dataKey="name" type="category" stroke="#9ca3af" fontSize={11} width={80} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#1f2937',
+                    border: '1px solid #374151',
+                    borderRadius: '8px',
+                  }}
                 />
-                <YAxis 
-                  stroke="#6b7280" 
-                  tick={{ fill: '#6b7280', fontSize: 11 }}
-                  axisLine={{ stroke: '#1f2937' }}
-                  tickLine={false}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="vehicles" fill="#33a5ff" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="pedestrians" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="cyclists" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="vehicles" fill={CHART_COLORS.vehicles} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </Card.Content>
+          </div>
         </Card>
+      </div>
 
-        {/* Congestion distribution */}
-        <Card>
-          <Card.Header>
-            <Card.Title>Congestion Distribution</Card.Title>
-          </Card.Header>
-          <Card.Content className="h-[300px]">
+      {/* Bottom Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Traffic Distribution Pie */}
+        <Card className="p-5">
+          <h3 className="text-lg font-semibold text-white mb-4">Traffic Level Distribution</h3>
+          <div style={{ height: 200 }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={congestionData}
+                  data={trafficDistribution}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
-                  paddingAngle={5}
+                  innerRadius={50}
+                  outerRadius={80}
                   dataKey="value"
+                  label={({ name, value }) => `${name}: ${value}`}
                 >
-                  {congestionData.map((entry, index) => (
+                  {trafficDistribution.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip />
               </PieChart>
             </ResponsiveContainer>
-            {/* Legend */}
-            <div className="flex justify-center gap-6 -mt-4">
-              {congestionData.map((item) => (
-                <div key={item.name} className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span className="text-sm text-gray-400">{item.name} ({item.value}%)</span>
-                </div>
-              ))}
+          </div>
+        </Card>
+
+        {/* Summary Stats */}
+        <Card className="p-5 lg:col-span-2">
+          <h3 className="text-lg font-semibold text-white mb-4">Current Summary</h3>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+              <p className="text-sm text-gray-400">Vehicles</p>
+              <p className="text-3xl font-bold text-blue-400">{totals.vehicles}</p>
+              <p className="text-xs text-gray-500 mt-1">Across all cameras</p>
             </div>
-          </Card.Content>
+            <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+              <p className="text-sm text-gray-400">Pedestrians</p>
+              <p className="text-3xl font-bold text-green-400">{totals.pedestrians}</p>
+              <p className="text-xs text-gray-500 mt-1">Across all cameras</p>
+            </div>
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+              <p className="text-sm text-gray-400">Cyclists</p>
+              <p className="text-3xl font-bold text-amber-400">{totals.cyclists}</p>
+              <p className="text-xs text-gray-500 mt-1">Across all cameras</p>
+            </div>
+          </div>
+          
+          <div className="mt-4 p-4 rounded-xl bg-white/5">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-400">Camera Uptime</span>
+              <span className="text-white font-semibold">
+                {Math.round((totals.activeCameras / cameras.length) * 100)}%
+              </span>
+            </div>
+            <div className="mt-2 h-2 bg-dark-bg rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-green-500 rounded-full"
+                style={{ width: `${(totals.activeCameras / cameras.length) * 100}%` }}
+              />
+            </div>
+          </div>
         </Card>
       </div>
-
-      {/* Peak hours chart */}
-      <Card>
-        <Card.Header>
-          <Card.Title>Traffic by Hour of Day</Card.Title>
-        </Card.Header>
-        <Card.Content className="h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={peakHoursData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
-              <XAxis 
-                dataKey="hour" 
-                stroke="#6b7280" 
-                tick={{ fill: '#6b7280', fontSize: 11 }}
-                axisLine={{ stroke: '#1f2937' }}
-                tickLine={false}
-              />
-              <YAxis 
-                stroke="#6b7280" 
-                tick={{ fill: '#6b7280', fontSize: 11 }}
-                axisLine={{ stroke: '#1f2937' }}
-                tickLine={false}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Line 
-                type="monotone" 
-                dataKey="count" 
-                stroke="#33a5ff" 
-                strokeWidth={3}
-                dot={{ fill: '#33a5ff', strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6, fill: '#33a5ff' }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </Card.Content>
-      </Card>
-
-      {/* Hourly chart */}
-      <TrafficChart title="Real-Time Traffic Flow (Last 24 Hours)" />
     </div>
   )
 }
-
-export default Analytics

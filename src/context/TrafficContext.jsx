@@ -1,158 +1,123 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+/**
+ * Traffic Context - State Management
+ * Connects to real Backend API
+ */
 
-// Mock data for cameras
-const MOCK_CAMERAS = [
-  {
-    id: 'cam-001',
-    name: 'Grey Street',
-    location: { lat: 54.9714, lng: -1.6120 },
-    status: 'online',
-    trafficLevel: 'high',
-    vehicles: 47,
-    pedestrians: 123,
-    cyclists: 8,
-    lastUpdate: new Date().toISOString(),
-  },
-  {
-    id: 'cam-002',
-    name: 'Quayside',
-    location: { lat: 54.9695, lng: -1.6037 },
-    status: 'online',
-    trafficLevel: 'medium',
-    vehicles: 28,
-    pedestrians: 89,
-    cyclists: 15,
-    lastUpdate: new Date().toISOString(),
-  },
-  {
-    id: 'cam-003',
-    name: 'Central Station',
-    location: { lat: 54.9686, lng: -1.6174 },
-    status: 'online',
-    trafficLevel: 'high',
-    vehicles: 62,
-    pedestrians: 234,
-    cyclists: 5,
-    lastUpdate: new Date().toISOString(),
-  },
-  {
-    id: 'cam-004',
-    name: 'Jesmond Road',
-    location: { lat: 54.9812, lng: -1.5987 },
-    status: 'online',
-    trafficLevel: 'low',
-    vehicles: 12,
-    pedestrians: 34,
-    cyclists: 22,
-    lastUpdate: new Date().toISOString(),
-  },
-  {
-    id: 'cam-005',
-    name: 'Gateshead Millennium Bridge',
-    location: { lat: 54.9697, lng: -1.5993 },
-    status: 'online',
-    trafficLevel: 'medium',
-    vehicles: 8,
-    pedestrians: 156,
-    cyclists: 31,
-    lastUpdate: new Date().toISOString(),
-  },
-  {
-    id: 'cam-006',
-    name: 'Haymarket',
-    location: { lat: 54.9784, lng: -1.6148 },
-    status: 'offline',
-    trafficLevel: 'unknown',
-    vehicles: 0,
-    pedestrians: 0,
-    cyclists: 0,
-    lastUpdate: new Date().toISOString(),
-  },
-]
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import * as api from '../services/api'
+import { REFRESH_INTERVAL } from '../utils/constants'
 
-// Mock historical data
-const generateHistoricalData = () => {
-  const data = []
-  const now = new Date()
-  for (let i = 23; i >= 0; i--) {
-    const hour = new Date(now.getTime() - i * 60 * 60 * 1000)
-    data.push({
-      time: hour.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-      vehicles: Math.floor(Math.random() * 60) + 10,
-      pedestrians: Math.floor(Math.random() * 150) + 20,
-      cyclists: Math.floor(Math.random() * 30) + 5,
-    })
-  }
-  return data
+// Transform API camera response to frontend format
+const transformCamera = (apiCamera) => ({
+  id: apiCamera.id,
+  name: apiCamera.name,
+  location: apiCamera.location || { lat: apiCamera.latitude || 54.9783, lng: apiCamera.longitude || -1.6178 },
+  status: apiCamera.status || 'unknown',
+  trafficLevel: apiCamera.traffic_level || 'unknown',
+  vehicles: apiCamera.vehicles || 0,
+  pedestrians: apiCamera.pedestrians || 0,
+  cyclists: apiCamera.cyclists || 0,
+  lastUpdate: apiCamera.last_update || new Date().toISOString(),
+  area: apiCamera.area || 'Newcastle',
+})
+
+// Calculate totals from cameras array
+const calculateTotals = (cameras) => {
+  return cameras.reduce(
+    (acc, camera) => ({
+      vehicles: acc.vehicles + (camera.vehicles || 0),
+      pedestrians: acc.pedestrians + (camera.pedestrians || 0),
+      cyclists: acc.cyclists + (camera.cyclists || 0),
+      activeCameras: acc.activeCameras + (camera.status === 'online' ? 1 : 0),
+    }),
+    { vehicles: 0, pedestrians: 0, cyclists: 0, activeCameras: 0 }
+  )
 }
 
 const TrafficContext = createContext(null)
 
 export function TrafficProvider({ children }) {
-  const [cameras, setCameras] = useState(MOCK_CAMERAS)
+  const [cameras, setCameras] = useState([])
   const [selectedCamera, setSelectedCamera] = useState(null)
-  const [historicalData, setHistoricalData] = useState(generateHistoricalData())
-  const [isLoading, setIsLoading] = useState(false)
+  const [historicalData, setHistoricalData] = useState([])
+  const [totals, setTotals] = useState({ vehicles: 0, pedestrians: 0, cyclists: 0, activeCameras: 0 })
+  const [isLoading, setIsLoading] = useState(true)
+  const [isRunningPipeline, setIsRunningPipeline] = useState(false)
   const [lastRefresh, setLastRefresh] = useState(new Date())
+  const [apiStatus, setApiStatus] = useState('checking')
+  const [pipelineResult, setPipelineResult] = useState(null)
 
-  // Simulate real-time updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCameras(prevCameras => 
-        prevCameras.map(camera => {
-          if (camera.status === 'offline') return camera
-          
-          const vehicleChange = Math.floor(Math.random() * 7) - 3
-          const pedestrianChange = Math.floor(Math.random() * 11) - 5
-          const cyclistChange = Math.floor(Math.random() * 5) - 2
-          
-          const newVehicles = Math.max(0, camera.vehicles + vehicleChange)
-          const newPedestrians = Math.max(0, camera.pedestrians + pedestrianChange)
-          const newCyclists = Math.max(0, camera.cyclists + cyclistChange)
-          
-          // Determine traffic level
-          let trafficLevel = 'low'
-          if (newVehicles > 40 || newPedestrians > 150) {
-            trafficLevel = 'high'
-          } else if (newVehicles > 20 || newPedestrians > 80) {
-            trafficLevel = 'medium'
-          }
-          
-          return {
-            ...camera,
-            vehicles: newVehicles,
-            pedestrians: newPedestrians,
-            cyclists: newCyclists,
-            trafficLevel,
-            lastUpdate: new Date().toISOString(),
-          }
-        })
-      )
-      setLastRefresh(new Date())
-    }, 5000) // Update every 5 seconds
+  // Fetch cameras and metrics from backend
+  const fetchData = useCallback(async () => {
+    try {
+      await api.checkLiveness()
+      setApiStatus('online')
 
-    return () => clearInterval(interval)
-  }, [])
+      // Fetch cameras
+      const camerasData = await api.getCameras()
+      if (camerasData && camerasData.length > 0) {
+        const transformed = camerasData.map(transformCamera)
+        setCameras(transformed)
+        setTotals(calculateTotals(transformed))
+      }
 
-  // Calculate totals
-  const totals = cameras.reduce(
-    (acc, camera) => ({
-      vehicles: acc.vehicles + camera.vehicles,
-      pedestrians: acc.pedestrians + camera.pedestrians,
-      cyclists: acc.cyclists + camera.cyclists,
-      activeCameras: acc.activeCameras + (camera.status === 'online' ? 1 : 0),
-    }),
-    { vehicles: 0, pedestrians: 0, cyclists: 0, activeCameras: 0 }
-  )
+      // Fetch hourly metrics
+      try {
+        const hourly = await api.getHourlyMetrics(24)
+        if (hourly && hourly.length > 0) {
+          setHistoricalData(hourly)
+        }
+      } catch {
+        // keep existing
+      }
 
-  const refreshData = async () => {
-    setIsLoading(true)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setHistoricalData(generateHistoricalData())
+    } catch (error) {
+      console.warn('API unavailable:', error.message)
+      setApiStatus('offline')
+    }
+
     setLastRefresh(new Date())
     setIsLoading(false)
-  }
+  }, [])
+
+  // Run the full detection pipeline
+  const runPipeline = useCallback(async (maxCameras = 10) => {
+    setIsRunningPipeline(true)
+    setPipelineResult(null)
+    try {
+      const result = await api.runDetectionPipeline(maxCameras)
+      setPipelineResult(result)
+      // Refresh data after pipeline completes
+      await fetchData()
+      return result
+    } catch (error) {
+      console.error('Pipeline error:', error)
+      setPipelineResult({ status: 'error', message: error.message })
+    } finally {
+      setIsRunningPipeline(false)
+    }
+  }, [fetchData])
+
+  // Initial load
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  // Auto refresh every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(fetchData, REFRESH_INTERVAL * 60)
+    return () => clearInterval(interval)
+  }, [fetchData])
+
+  // Update totals when cameras change
+  useEffect(() => {
+    setTotals(calculateTotals(cameras))
+  }, [cameras])
+
+  const refreshData = useCallback(async () => {
+    setIsLoading(true)
+    await fetchData()
+  }, [fetchData])
 
   const value = {
     cameras,
@@ -161,8 +126,12 @@ export function TrafficProvider({ children }) {
     historicalData,
     totals,
     isLoading,
+    isRunningPipeline,
     lastRefresh,
+    apiStatus,
+    pipelineResult,
     refreshData,
+    runPipeline,
   }
 
   return (

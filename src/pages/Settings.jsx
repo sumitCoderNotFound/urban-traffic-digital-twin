@@ -1,282 +1,211 @@
-import { useState } from 'react'
+/**
+ * Settings Page - Configuration and project info
+ */
+
+import { useState, useEffect } from 'react'
+import { useTraffic } from '../context/TrafficContext'
+import { Card } from '../components'
+import { API_BASE_URL, PROJECT_INFO } from '../utils/constants'
 import { 
-  Bell, 
-  Monitor, 
+  Settings as SettingsIcon, 
   Database, 
-  Wifi, 
-  Moon, 
-  Sun,
-  Save,
-  RotateCcw,
-  ChevronRight
+  Server,
+  User,
+  Info,
+  RefreshCw,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  ExternalLink,
 } from 'lucide-react'
-import Card from '../components/common/Card'
-import clsx from 'clsx'
 
-function Settings() {
-  const [settings, setSettings] = useState({
-    refreshInterval: 5,
-    notifications: true,
-    darkMode: true,
-    autoRefresh: true,
-    showOfflineCameras: true,
-    dataRetention: 30,
-  })
+export default function Settings() {
+  const { apiStatus, refreshData, isLoading } = useTraffic()
+  const [backendHealth, setBackendHealth] = useState(null)
+  const [checkingHealth, setCheckingHealth] = useState(false)
 
-  const handleChange = (key, value) => {
-    setSettings(prev => ({ ...prev, [key]: value }))
+  // Check backend health
+  const checkBackendHealth = async () => {
+    setCheckingHealth(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/health`)
+      if (response.ok) {
+        const data = await response.json()
+        setBackendHealth(data)
+      } else {
+        setBackendHealth({ status: 'error', message: 'Backend returned error' })
+      }
+    } catch (error) {
+      setBackendHealth({ status: 'offline', message: error.message })
+    } finally {
+      setCheckingHealth(false)
+    }
+  }
+
+  useEffect(() => {
+    checkBackendHealth()
+  }, [])
+
+  const StatusIcon = ({ status }) => {
+    if (status === 'healthy' || status === 'online' || status === 'ready') {
+      return <CheckCircle className="w-5 h-5 text-green-500" />
+    }
+    if (status === 'offline' || status === 'error') {
+      return <XCircle className="w-5 h-5 text-red-500" />
+    }
+    return <AlertCircle className="w-5 h-5 text-amber-500" />
   }
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-4xl">
-      {/* Page header */}
+    <div className="space-y-6">
+      {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-display font-bold text-white">
-          Settings
-        </h1>
-        <p className="text-gray-400 mt-1">
-          Configure your dashboard preferences
-        </p>
+        <h1 className="text-2xl font-bold text-white">Settings</h1>
+        <p className="text-gray-400 mt-1">System configuration and project information</p>
       </div>
 
-      {/* General Settings */}
-      <Card>
-        <Card.Header>
-          <Card.Title className="flex items-center gap-2">
-            <Monitor className="w-5 h-5 text-primary-400" />
-            Display Settings
-          </Card.Title>
-        </Card.Header>
-        <Card.Content className="space-y-4">
-          {/* Dark Mode */}
-          <div className="flex items-center justify-between py-3 border-b border-dark-border">
-            <div className="flex items-center gap-3">
-              {settings.darkMode ? (
-                <Moon className="w-5 h-5 text-gray-400" />
-              ) : (
-                <Sun className="w-5 h-5 text-gray-400" />
-              )}
-              <div>
-                <p className="text-white font-medium">Dark Mode</p>
-                <p className="text-sm text-gray-500">Use dark theme for the interface</p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Backend Connection */}
+        <Card className="p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Server className="w-5 h-5 text-primary" />
+            <h3 className="text-lg font-semibold text-white">Backend Connection</h3>
+          </div>
+          
+          <div className="space-y-4">
+            {/* Connection Status */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
+              <div className="flex items-center gap-3">
+                <StatusIcon status={apiStatus} />
+                <div>
+                  <p className="font-medium text-white">Status</p>
+                  <p className="text-sm text-gray-400">
+                    {apiStatus === 'online' ? 'Connected to backend' : 'Using simulated data'}
+                  </p>
+                </div>
               </div>
+              <span 
+                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  apiStatus === 'online' 
+                    ? 'bg-green-500/20 text-green-400' 
+                    : 'bg-amber-500/20 text-amber-400'
+                }`}
+              >
+                {apiStatus === 'online' ? 'Live' : 'Demo'}
+              </span>
             </div>
-            <button
-              onClick={() => handleChange('darkMode', !settings.darkMode)}
-              className={clsx(
-                'relative w-12 h-6 rounded-full transition-colors',
-                settings.darkMode ? 'bg-primary-600' : 'bg-gray-600'
-              )}
-            >
-              <span
-                className={clsx(
-                  'absolute top-1 w-4 h-4 rounded-full bg-white transition-transform',
-                  settings.darkMode ? 'translate-x-7' : 'translate-x-1'
-                )}
-              />
-            </button>
-          </div>
 
-          {/* Show Offline Cameras */}
-          <div className="flex items-center justify-between py-3">
-            <div>
-              <p className="text-white font-medium">Show Offline Cameras</p>
-              <p className="text-sm text-gray-500">Display cameras that are currently offline</p>
+            {/* API URL */}
+            <div className="p-3 rounded-lg bg-white/5">
+              <p className="text-sm text-gray-400 mb-1">API URL</p>
+              <code className="text-sm text-primary font-mono">{API_BASE_URL}</code>
             </div>
-            <button
-              onClick={() => handleChange('showOfflineCameras', !settings.showOfflineCameras)}
-              className={clsx(
-                'relative w-12 h-6 rounded-full transition-colors',
-                settings.showOfflineCameras ? 'bg-primary-600' : 'bg-gray-600'
-              )}
-            >
-              <span
-                className={clsx(
-                  'absolute top-1 w-4 h-4 rounded-full bg-white transition-transform',
-                  settings.showOfflineCameras ? 'translate-x-7' : 'translate-x-1'
-                )}
-              />
-            </button>
-          </div>
-        </Card.Content>
-      </Card>
 
-      {/* Data Settings */}
-      <Card>
-        <Card.Header>
-          <Card.Title className="flex items-center gap-2">
-            <Database className="w-5 h-5 text-primary-400" />
-            Data Settings
-          </Card.Title>
-        </Card.Header>
-        <Card.Content className="space-y-4">
-          {/* Refresh Interval */}
-          <div className="flex items-center justify-between py-3 border-b border-dark-border">
-            <div className="flex items-center gap-3">
-              <Wifi className="w-5 h-5 text-gray-400" />
-              <div>
-                <p className="text-white font-medium">Refresh Interval</p>
-                <p className="text-sm text-gray-500">How often to fetch new data</p>
+            {/* Backend Health Details */}
+            {backendHealth && backendHealth.status === 'healthy' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 rounded-lg bg-white/5">
+                  <p className="text-sm text-gray-400">Database</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <StatusIcon status={backendHealth.database === 'healthy' ? 'healthy' : 'error'} />
+                    <span className="text-white capitalize">{backendHealth.database}</span>
+                  </div>
+                </div>
+                <div className="p-3 rounded-lg bg-white/5">
+                  <p className="text-sm text-gray-400">YOLO Detector</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <StatusIcon status={backendHealth.detector === 'ready' ? 'healthy' : 'warning'} />
+                    <span className="text-white capitalize">{backendHealth.detector}</span>
+                  </div>
+                </div>
               </div>
-            </div>
-            <select
-              value={settings.refreshInterval}
-              onChange={(e) => handleChange('refreshInterval', Number(e.target.value))}
-              className="input w-32 py-2 text-sm"
-            >
-              <option value={1}>1 second</option>
-              <option value={5}>5 seconds</option>
-              <option value={10}>10 seconds</option>
-              <option value={30}>30 seconds</option>
-              <option value={60}>1 minute</option>
-            </select>
-          </div>
+            )}
 
-          {/* Auto Refresh */}
-          <div className="flex items-center justify-between py-3 border-b border-dark-border">
-            <div>
-              <p className="text-white font-medium">Auto Refresh</p>
-              <p className="text-sm text-gray-500">Automatically update data</p>
-            </div>
+            {/* Check Health Button */}
             <button
-              onClick={() => handleChange('autoRefresh', !settings.autoRefresh)}
-              className={clsx(
-                'relative w-12 h-6 rounded-full transition-colors',
-                settings.autoRefresh ? 'bg-primary-600' : 'bg-gray-600'
-              )}
+              onClick={checkBackendHealth}
+              disabled={checkingHealth}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 transition-colors disabled:opacity-50"
             >
-              <span
-                className={clsx(
-                  'absolute top-1 w-4 h-4 rounded-full bg-white transition-transform',
-                  settings.autoRefresh ? 'translate-x-7' : 'translate-x-1'
-                )}
-              />
+              <RefreshCw className={`w-4 h-4 ${checkingHealth ? 'animate-spin' : ''}`} />
+              {checkingHealth ? 'Checking...' : 'Check Connection'}
             </button>
           </div>
+        </Card>
 
-          {/* Data Retention */}
-          <div className="flex items-center justify-between py-3">
-            <div>
-              <p className="text-white font-medium">Data Retention</p>
-              <p className="text-sm text-gray-500">How long to keep historical data</p>
+        {/* Data Sources */}
+        <Card className="p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Database className="w-5 h-5 text-green-500" />
+            <h3 className="text-lg font-semibold text-white">Data Sources</h3>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="p-3 rounded-lg bg-white/5">
+              <p className="font-medium text-white">Newcastle Urban Observatory</p>
+              <p className="text-sm text-gray-400 mt-1">
+                Live traffic camera data from Newcastle and Gateshead
+              </p>
+              <a 
+                href="https://newcastle.urbanobservatory.ac.uk/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1"
+              >
+                Visit Website <ExternalLink className="w-3 h-3" />
+              </a>
             </div>
-            <select
-              value={settings.dataRetention}
-              onChange={(e) => handleChange('dataRetention', Number(e.target.value))}
-              className="input w-32 py-2 text-sm"
-            >
-              <option value={7}>7 days</option>
-              <option value={14}>14 days</option>
-              <option value={30}>30 days</option>
-              <option value={90}>90 days</option>
-            </select>
-          </div>
-        </Card.Content>
-      </Card>
 
-      {/* Notification Settings */}
-      <Card>
-        <Card.Header>
-          <Card.Title className="flex items-center gap-2">
-            <Bell className="w-5 h-5 text-primary-400" />
-            Notifications
-          </Card.Title>
-        </Card.Header>
-        <Card.Content>
-          <div className="flex items-center justify-between py-3">
-            <div>
-              <p className="text-white font-medium">Enable Notifications</p>
-              <p className="text-sm text-gray-500">Receive alerts for high congestion</p>
+            <div className="p-3 rounded-lg bg-white/5">
+              <p className="font-medium text-white">YOLOv8 Object Detection</p>
+              <p className="text-sm text-gray-400 mt-1">
+                Real-time vehicle, pedestrian, and cyclist detection
+              </p>
+              <a 
+                href="https://docs.ultralytics.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1"
+              >
+                Documentation <ExternalLink className="w-3 h-3" />
+              </a>
             </div>
-            <button
-              onClick={() => handleChange('notifications', !settings.notifications)}
-              className={clsx(
-                'relative w-12 h-6 rounded-full transition-colors',
-                settings.notifications ? 'bg-primary-600' : 'bg-gray-600'
-              )}
-            >
-              <span
-                className={clsx(
-                  'absolute top-1 w-4 h-4 rounded-full bg-white transition-transform',
-                  settings.notifications ? 'translate-x-7' : 'translate-x-1'
-                )}
-              />
-            </button>
           </div>
-        </Card.Content>
-      </Card>
+        </Card>
 
-      {/* API Configuration */}
-      <Card>
-        <Card.Header>
-          <Card.Title className="flex items-center gap-2">
-            <Database className="w-5 h-5 text-primary-400" />
-            API Configuration
-          </Card.Title>
-        </Card.Header>
-        <Card.Content className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-2">
-              Urban Observatory API Endpoint
-            </label>
-            <input
-              type="text"
-              defaultValue="https://api.newcastle.urbanobservatory.ac.uk"
-              className="input"
-              readOnly
-            />
+        {/* Project Information */}
+        <Card className="p-5 lg:col-span-2">
+          <div className="flex items-center gap-2 mb-4">
+            <Info className="w-5 h-5 text-amber-500" />
+            <h3 className="text-lg font-semibold text-white">About This Project</h3>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-2">
-              Backend API URL
-            </label>
-            <input
-              type="text"
-              defaultValue="http://localhost:8000/api"
-              className="input"
-            />
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-3">
+              <InfoRow label="Project" value={PROJECT_INFO.name} />
+              <InfoRow label="Description" value={PROJECT_INFO.description} />
+              <InfoRow label="Version" value={PROJECT_INFO.version} />
+            </div>
+            <div className="space-y-3">
+              <InfoRow label="Author" value={PROJECT_INFO.author} />
+              <InfoRow label="Supervisor" value={PROJECT_INFO.supervisor} />
+              <InfoRow label="University" value={PROJECT_INFO.university} />
+              <InfoRow label="Module" value={PROJECT_INFO.module} />
+            </div>
           </div>
-        </Card.Content>
-      </Card>
-
-      {/* About Section */}
-      <Card>
-        <Card.Header>
-          <Card.Title>About</Card.Title>
-        </Card.Header>
-        <Card.Content className="space-y-3">
-          <div className="flex justify-between py-2">
-            <span className="text-gray-400">Version</span>
-            <span className="text-white">1.0.0 (MVP)</span>
-          </div>
-          <div className="flex justify-between py-2">
-            <span className="text-gray-400">Project</span>
-            <span className="text-white">Urban Digital Twin</span>
-          </div>
-          <div className="flex justify-between py-2">
-            <span className="text-gray-400">Author</span>
-            <span className="text-white">Sumit Malviya</span>
-          </div>
-          <div className="flex justify-between py-2">
-            <span className="text-gray-400">Supervisor</span>
-            <span className="text-white">Dr. Jason Moore</span>
-          </div>
-        </Card.Content>
-      </Card>
-
-      {/* Action Buttons */}
-      <div className="flex gap-4">
-        <button className="btn-primary flex items-center gap-2">
-          <Save className="w-4 h-4" />
-          Save Changes
-        </button>
-        <button className="btn-secondary flex items-center gap-2">
-          <RotateCcw className="w-4 h-4" />
-          Reset to Defaults
-        </button>
+        </Card>
       </div>
     </div>
   )
 }
 
-export default Settings
+// Helper component
+function InfoRow({ label, value }) {
+  return (
+    <div className="flex justify-between items-center py-2 border-b border-dark-border">
+      <span className="text-gray-400">{label}</span>
+      <span className="text-white font-medium text-right">{value}</span>
+    </div>
+  )
+}

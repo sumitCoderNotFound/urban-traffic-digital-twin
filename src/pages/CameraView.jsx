@@ -1,93 +1,181 @@
-import { useTraffic } from '../context/TrafficContext'
-import CameraCard from '../components/camera/CameraCard'
-import Card from '../components/common/Card'
-import TrafficMap from '../components/map/TrafficMap'
-import { Camera, Filter } from 'lucide-react'
-import { useState } from 'react'
-import clsx from 'clsx'
+/**
+ * CameraView Page - Camera list and details
+ */
 
-function CameraView() {
+import { useState } from 'react'
+import { useTraffic } from '../context/TrafficContext'
+import { Card, CameraList, TrafficMap } from '../components'
+import { Camera, MapPin, Clock, Car, Users, Bike } from 'lucide-react'
+import { formatDateTime } from '../utils'
+import { TRAFFIC_COLORS } from '../utils/constants'
+
+export default function CameraView() {
   const { cameras, selectedCamera, setSelectedCamera } = useTraffic()
   const [filter, setFilter] = useState('all') // all, online, offline
 
   const filteredCameras = cameras.filter(camera => {
     if (filter === 'all') return true
-    if (filter === 'online') return camera.status === 'online'
-    if (filter === 'offline') return camera.status === 'offline'
-    return true
+    return camera.status === filter
   })
 
+  const onlineCount = cameras.filter(c => c.status === 'online').length
+  const offlineCount = cameras.filter(c => c.status === 'offline').length
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Page header */}
+    <div className="space-y-6">
+      {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold text-white">
-            Camera Management
-          </h1>
-          <p className="text-gray-400 mt-1">
-            View and manage all traffic cameras
-          </p>
+          <h1 className="text-2xl font-bold text-white">Cameras</h1>
+          <p className="text-gray-400 mt-1">Manage and monitor traffic cameras</p>
         </div>
         
-        {/* Filter buttons */}
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-gray-500" />
-          <div className="flex bg-dark-card rounded-lg p-1 border border-dark-border">
-            {['all', 'online', 'offline'].map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={clsx(
-                  'px-3 py-1.5 text-sm font-medium rounded-md transition-all',
-                  filter === f
-                    ? 'bg-primary-600 text-white'
-                    : 'text-gray-400 hover:text-white'
-                )}
-              >
-                {f.charAt(0).toUpperCase() + f.slice(1)}
-              </button>
-            ))}
-          </div>
+        {/* Filter */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setFilter('all')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              filter === 'all' 
+                ? 'bg-primary text-white' 
+                : 'bg-white/5 text-gray-400 hover:bg-white/10'
+            }`}
+          >
+            All ({cameras.length})
+          </button>
+          <button
+            onClick={() => setFilter('online')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              filter === 'online' 
+                ? 'bg-green-500 text-white' 
+                : 'bg-white/5 text-gray-400 hover:bg-white/10'
+            }`}
+          >
+            Online ({onlineCount})
+          </button>
+          <button
+            onClick={() => setFilter('offline')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              filter === 'offline' 
+                ? 'bg-red-500 text-white' 
+                : 'bg-white/5 text-gray-400 hover:bg-white/10'
+            }`}
+          >
+            Offline ({offlineCount})
+          </button>
         </div>
       </div>
 
-      {/* Main layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Camera grid */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-display font-semibold text-white flex items-center gap-2">
-              <Camera className="w-5 h-5 text-primary-400" />
-              Cameras ({filteredCameras.length})
-            </h3>
-          </div>
-          <div className="grid grid-cols-1 gap-4 max-h-[calc(100vh-250px)] overflow-y-auto pr-2">
-            {filteredCameras.map((camera) => (
-              <CameraCard
-                key={camera.id}
-                camera={camera}
-                isSelected={selectedCamera?.id === camera.id}
-                onClick={() => setSelectedCamera(camera)}
-              />
-            ))}
-          </div>
-        </div>
+      {/* Map */}
+      <Card className="p-5">
+        <h3 className="text-lg font-semibold text-white mb-4">Camera Map</h3>
+        <TrafficMap height="300px" />
+      </Card>
 
-        {/* Map */}
-        <Card className="h-[calc(100vh-250px)] sticky top-6">
-          <Card.Header>
-            <Card.Title>
-              {selectedCamera ? selectedCamera.name : 'Select a Camera'}
-            </Card.Title>
-          </Card.Header>
-          <Card.Content className="h-[calc(100%-60px)] -mx-6 -mb-6">
-            <TrafficMap height="100%" />
-          </Card.Content>
+      {/* Selected Camera Details */}
+      {selectedCamera && (
+        <Card className="p-5">
+          <div className="flex items-start gap-4">
+            <div 
+              className="w-12 h-12 rounded-xl flex items-center justify-center"
+              style={{ 
+                backgroundColor: TRAFFIC_COLORS[selectedCamera.trafficLevel]?.bg || '#374151' 
+              }}
+            >
+              <Camera 
+                className="w-6 h-6" 
+                style={{ 
+                  color: TRAFFIC_COLORS[selectedCamera.trafficLevel]?.primary || '#9ca3af' 
+                }}
+              />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-white">{selectedCamera.name}</h3>
+              <div className="flex items-center gap-4 mt-2 text-sm text-gray-400">
+                <span className="flex items-center gap-1">
+                  <MapPin className="w-4 h-4" />
+                  {selectedCamera.location.lat.toFixed(4)}, {selectedCamera.location.lng.toFixed(4)}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Clock className="w-4 h-4" />
+                  {formatDateTime(selectedCamera.lastUpdate)}
+                </span>
+              </div>
+              
+              {selectedCamera.status === 'online' && (
+                <div className="grid grid-cols-3 gap-4 mt-4">
+                  <div className="p-3 rounded-lg bg-white/5">
+                    <div className="flex items-center gap-2 text-blue-400">
+                      <Car className="w-4 h-4" />
+                      <span className="text-sm">Vehicles</span>
+                    </div>
+                    <p className="text-2xl font-bold text-white mt-1">{selectedCamera.vehicles}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-white/5">
+                    <div className="flex items-center gap-2 text-green-400">
+                      <Users className="w-4 h-4" />
+                      <span className="text-sm">Pedestrians</span>
+                    </div>
+                    <p className="text-2xl font-bold text-white mt-1">{selectedCamera.pedestrians}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-white/5">
+                    <div className="flex items-center gap-2 text-amber-400">
+                      <Bike className="w-4 h-4" />
+                      <span className="text-sm">Cyclists</span>
+                    </div>
+                    <p className="text-2xl font-bold text-white mt-1">{selectedCamera.cyclists}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </Card>
+      )}
+
+      {/* Camera Grid */}
+      <div>
+        <h3 className="text-lg font-semibold text-white mb-4">
+          {filter === 'all' ? 'All Cameras' : filter === 'online' ? 'Online Cameras' : 'Offline Cameras'}
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredCameras.map((camera) => (
+            <Card 
+              key={camera.id}
+              className={`p-4 cursor-pointer transition-all hover:border-primary/50 ${
+                selectedCamera?.id === camera.id ? 'border-primary ring-1 ring-primary/30' : ''
+              }`}
+              onClick={() => setSelectedCamera(camera)}
+            >
+              <div className="flex items-center gap-3">
+                <div 
+                  className="w-10 h-10 rounded-lg flex items-center justify-center"
+                  style={{ 
+                    backgroundColor: TRAFFIC_COLORS[camera.trafficLevel]?.bg || '#374151' 
+                  }}
+                >
+                  <Camera 
+                    className="w-5 h-5" 
+                    style={{ 
+                      color: TRAFFIC_COLORS[camera.trafficLevel]?.primary || '#9ca3af' 
+                    }}
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-medium text-white truncate">{camera.name}</h4>
+                  <p className={`text-xs ${camera.status === 'online' ? 'text-green-400' : 'text-red-400'}`}>
+                    {camera.status}
+                  </p>
+                </div>
+                {camera.status === 'online' && (
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-white">{camera.vehicles}</p>
+                    <p className="text-xs text-gray-500">vehicles</p>
+                  </div>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
       </div>
     </div>
   )
 }
-
-export default CameraView

@@ -1,69 +1,92 @@
+/**
+ * Sidebar Component - Navigation
+ */
+
 import { NavLink } from 'react-router-dom'
+import { useTraffic } from '../../context/TrafficContext'
 import { 
   LayoutDashboard, 
   Camera, 
   BarChart3, 
-  Settings,
-  Map,
-  Activity
+  Settings, 
+  Activity,
+  MapPin 
 } from 'lucide-react'
-import clsx from 'clsx'
 
-const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Cameras', href: '/cameras', icon: Camera },
-  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
-  { name: 'Settings', href: '/settings', icon: Settings },
+const navItems = [
+  { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { path: '/cameras', icon: Camera, label: 'Cameras' },
+  { path: '/analytics', icon: BarChart3, label: 'Analytics' },
+  { path: '/settings', icon: Settings, label: 'Settings' },
 ]
 
-function Sidebar() {
+export default function Sidebar() {
+  const { apiStatus } = useTraffic()
+
   return (
-    <aside className="w-64 bg-dark-card border-r border-dark-border flex flex-col">
+    <aside className="fixed left-0 top-0 h-screen w-64 bg-dark-card border-r border-dark-border flex flex-col z-50">
       {/* Logo */}
-      <div className="h-16 flex items-center px-6 border-b border-dark-border">
+      <div className="p-5 border-b border-dark-border">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center">
-            <Map className="w-5 h-5 text-white" />
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-lg shadow-primary/30">
+            <MapPin className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="font-display font-bold text-white">Urban Twin</h1>
+            <h1 className="font-bold text-white text-lg leading-tight">
+              Urban Twin
+            </h1>
             <p className="text-xs text-gray-500">Newcastle Traffic</p>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1">
-        {navigation.map((item) => (
-          <NavLink
-            key={item.name}
-            to={item.href}
-            className={({ isActive }) =>
-              clsx(
-                'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200',
-                isActive
-                  ? 'bg-primary-600/10 text-primary-400 border border-primary-500/20'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-dark-hover'
-              )
-            }
-          >
-            <item.icon className="w-5 h-5" />
-            {item.name}
-          </NavLink>
-        ))}
+      <nav className="flex-1 p-4">
+        <ul className="space-y-1">
+          {navItems.map(({ path, icon: Icon, label }) => (
+            <li key={path}>
+              <NavLink
+                to={path}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                    isActive
+                      ? 'bg-primary/15 text-primary border border-primary/30'
+                      : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                  }`
+                }
+              >
+                <Icon className="w-5 h-5" />
+                <span className="font-medium">{label}</span>
+              </NavLink>
+            </li>
+          ))}
+        </ul>
       </nav>
 
-      {/* Status indicator */}
+      {/* Status */}
       <div className="p-4 border-t border-dark-border">
-        <div className="card-glow p-4">
+        <div className="p-3 rounded-xl bg-white/5 border border-white/10">
           <div className="flex items-center gap-3">
             <div className="relative">
-              <Activity className="w-5 h-5 text-traffic-low" />
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-traffic-low rounded-full animate-pulse" />
+              <Activity 
+                className="w-5 h-5" 
+                style={{ color: apiStatus === 'online' ? '#22c55e' : '#f59e0b' }}
+              />
+              <span 
+                className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full animate-pulse"
+                style={{ backgroundColor: apiStatus === 'online' ? '#22c55e' : '#f59e0b' }}
+              />
             </div>
             <div>
-              <p className="text-sm font-medium text-white">System Active</p>
-              <p className="text-xs text-gray-500">All services running</p>
+              <p className="text-sm font-semibold text-white">
+                {apiStatus === 'online' ? 'System Active' : 'Demo Mode'}
+              </p>
+              <p 
+                className="text-xs"
+                style={{ color: apiStatus === 'online' ? '#22c55e' : '#f59e0b' }}
+              >
+                {apiStatus === 'online' ? 'Live Data' : 'Simulated Data'}
+              </p>
             </div>
           </div>
         </div>
@@ -71,5 +94,3 @@ function Sidebar() {
     </aside>
   )
 }
-
-export default Sidebar

@@ -1,57 +1,52 @@
-import clsx from 'clsx'
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
-import Card from './Card'
+/**
+ * StatCard Component - Displays a single statistic
+ */
 
-function StatCard({ 
+import Card from './Card'
+import { cn } from '../../utils'
+
+export default function StatCard({ 
   title, 
   value, 
   icon: Icon, 
   trend, 
-  trendValue, 
   color = 'primary',
-  delay = 0 
+  className,
 }) {
-  const colorClasses = {
-    primary: 'from-primary-500 to-primary-700',
-    green: 'from-traffic-low to-emerald-600',
-    amber: 'from-traffic-medium to-orange-600',
-    red: 'from-traffic-high to-rose-600',
+  const colors = {
+    primary: 'from-primary to-blue-600 shadow-primary/30',
+    green: 'from-green-500 to-emerald-600 shadow-green-500/30',
+    amber: 'from-amber-500 to-orange-600 shadow-amber-500/30',
+    purple: 'from-purple-500 to-violet-600 shadow-purple-500/30',
   }
 
-  const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus
-  const trendColor = trend === 'up' ? 'text-traffic-low' : trend === 'down' ? 'text-traffic-high' : 'text-gray-500'
-
   return (
-    <Card 
-      glow 
-      className={clsx(
-        'animate-slide-up',
-        delay && `animate-delay-${delay}`
-      )}
-    >
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="stat-label mb-2">{title}</p>
-          <p className="stat-value text-white">{value.toLocaleString()}</p>
-          
-          {trendValue !== undefined && (
-            <div className={clsx('flex items-center gap-1 mt-2', trendColor)}>
-              <TrendIcon className="w-4 h-4" />
-              <span className="text-sm font-medium">{trendValue}%</span>
-              <span className="text-xs text-gray-500 ml-1">vs last hour</span>
+    <Card className={cn('relative overflow-hidden', className)}>
+      <div className="p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-gray-400 mb-1">{title}</p>
+            <p className="text-3xl font-bold text-white">{value}</p>
+            {trend && (
+              <p className={cn(
+                'text-sm mt-1',
+                trend > 0 ? 'text-green-400' : 'text-red-400'
+              )}>
+                {trend > 0 ? '↑' : '↓'} {Math.abs(trend)}%
+              </p>
+            )}
+          </div>
+          {Icon && (
+            <div className={cn(
+              'w-14 h-14 rounded-xl flex items-center justify-center',
+              'bg-gradient-to-br shadow-lg',
+              colors[color]
+            )}>
+              <Icon className="w-7 h-7 text-white" />
             </div>
           )}
-        </div>
-        
-        <div className={clsx(
-          'w-12 h-12 rounded-xl bg-gradient-to-br flex items-center justify-center',
-          colorClasses[color]
-        )}>
-          <Icon className="w-6 h-6 text-white" />
         </div>
       </div>
     </Card>
   )
 }
-
-export default StatCard

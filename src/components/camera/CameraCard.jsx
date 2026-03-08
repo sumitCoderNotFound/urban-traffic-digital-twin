@@ -1,129 +1,85 @@
-import { Camera, MapPin, Clock, AlertCircle } from 'lucide-react'
-import { format } from 'date-fns'
+/**
+ * CameraCard Component - Displays single camera info
+ */
+
 import Card from '../common/Card'
 import Badge from '../common/Badge'
-import clsx from 'clsx'
+import { Camera, Car, Users, Bike } from 'lucide-react'
+import { cn } from '../../utils'
+import { TRAFFIC_COLORS } from '../../utils/constants'
 
-function CameraCard({ camera, onClick, isSelected = false }) {
-  const getTrafficBadgeVariant = (level) => {
-    switch (level) {
-      case 'low': return 'green'
-      case 'medium': return 'amber'
-      case 'high': return 'red'
-      default: return 'gray'
-    }
+export default function CameraCard({ camera, onClick, selected }) {
+  const trafficColor = TRAFFIC_COLORS[camera.trafficLevel] || TRAFFIC_COLORS.unknown
+
+  const statusVariant = {
+    online: 'success',
+    offline: 'danger',
+    maintenance: 'warning',
   }
 
-  const isOnline = camera.status === 'online'
-
   return (
-    <Card
-      glow
-      className={clsx(
-        'cursor-pointer transition-all duration-300',
-        isSelected && 'border-primary-500 shadow-glow',
-        !isOnline && 'opacity-60'
+    <Card 
+      className={cn(
+        'cursor-pointer transition-all hover:border-primary/50',
+        selected && 'border-primary ring-1 ring-primary/30'
       )}
-      onClick={onClick}
+      onClick={() => onClick?.(camera)}
     >
-      {/* Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className={clsx(
-            'w-10 h-10 rounded-xl flex items-center justify-center',
-            isOnline ? 'bg-primary-600/20' : 'bg-gray-600/20'
-          )}>
-            <Camera className={clsx(
-              'w-5 h-5',
-              isOnline ? 'text-primary-400' : 'text-gray-500'
-            )} />
-          </div>
-          <div>
-            <h4 className="font-display font-semibold text-white">{camera.name}</h4>
-            <div className="flex items-center gap-1 text-xs text-gray-500">
-              <MapPin className="w-3 h-3" />
-              <span>{camera.location.lat.toFixed(4)}, {camera.location.lng.toFixed(4)}</span>
+      <div className="p-4">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div 
+              className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ backgroundColor: trafficColor.bg }}
+            >
+              <Camera className="w-4 h-4" style={{ color: trafficColor.primary }} />
+            </div>
+            <div>
+              <h4 className="font-medium text-white text-sm">{camera.name}</h4>
+              <p className="text-xs text-gray-500">{camera.id}</p>
             </div>
           </div>
+          <Badge variant={statusVariant[camera.status] || 'default'}>
+            {camera.status}
+          </Badge>
         </div>
-        <Badge 
-          variant={getTrafficBadgeVariant(camera.trafficLevel)} 
-          dot
-        >
-          {camera.trafficLevel}
-        </Badge>
-      </div>
 
-      {/* Simulated camera feed placeholder */}
-      <div className={clsx(
-        'relative aspect-video rounded-lg mb-4 overflow-hidden',
-        isOnline ? 'bg-dark-bg' : 'bg-gray-800'
-      )}>
-        {isOnline ? (
-          <>
-            <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-              <div className="text-center">
-                <Camera className="w-8 h-8 text-gray-600 mx-auto mb-2" />
-                <p className="text-xs text-gray-500">Live Feed Preview</p>
-              </div>
+        {/* Stats */}
+        {camera.status === 'online' && (
+          <div className="grid grid-cols-3 gap-2">
+            <div className="text-center p-2 rounded-lg bg-white/5">
+              <Car className="w-4 h-4 text-blue-400 mx-auto mb-1" />
+              <p className="text-sm font-semibold text-white">{camera.vehicles}</p>
+              <p className="text-xs text-gray-500">Vehicles</p>
             </div>
-            {/* Live indicator */}
-            <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-1 bg-traffic-high/90 rounded-md">
-              <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-              <span className="text-xs font-medium text-white">LIVE</span>
+            <div className="text-center p-2 rounded-lg bg-white/5">
+              <Users className="w-4 h-4 text-green-400 mx-auto mb-1" />
+              <p className="text-sm font-semibold text-white">{camera.pedestrians}</p>
+              <p className="text-xs text-gray-500">People</p>
             </div>
-            {/* Detection count overlay */}
-            <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/60 rounded-md backdrop-blur-sm">
-              <span className="text-xs text-white font-mono">
-                {camera.vehicles + camera.pedestrians + camera.cyclists} detections
-              </span>
-            </div>
-          </>
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center">
-              <AlertCircle className="w-8 h-8 text-gray-600 mx-auto mb-2" />
-              <p className="text-xs text-gray-500">Camera Offline</p>
+            <div className="text-center p-2 rounded-lg bg-white/5">
+              <Bike className="w-4 h-4 text-amber-400 mx-auto mb-1" />
+              <p className="text-sm font-semibold text-white">{camera.cyclists}</p>
+              <p className="text-xs text-gray-500">Cyclists</p>
             </div>
           </div>
         )}
-      </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="text-center p-2 bg-dark-bg rounded-lg">
-          <p className="text-lg font-display font-bold text-white">{camera.vehicles}</p>
-          <p className="text-xs text-gray-500">Vehicles</p>
-        </div>
-        <div className="text-center p-2 bg-dark-bg rounded-lg">
-          <p className="text-lg font-display font-bold text-white">{camera.pedestrians}</p>
-          <p className="text-xs text-gray-500">Pedestrians</p>
-        </div>
-        <div className="text-center p-2 bg-dark-bg rounded-lg">
-          <p className="text-lg font-display font-bold text-white">{camera.cyclists}</p>
-          <p className="text-xs text-gray-500">Cyclists</p>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="flex items-center justify-between mt-4 pt-4 border-t border-dark-border">
-        <div className="flex items-center gap-1.5 text-xs text-gray-500">
-          <Clock className="w-3 h-3" />
-          <span>Updated {format(new Date(camera.lastUpdate), 'HH:mm:ss')}</span>
-        </div>
-        <div className={clsx(
-          'flex items-center gap-1.5 text-xs',
-          isOnline ? 'text-traffic-low' : 'text-gray-500'
-        )}>
-          <span className={clsx(
-            'w-1.5 h-1.5 rounded-full',
-            isOnline ? 'bg-traffic-low' : 'bg-gray-500'
-          )} />
-          <span>{isOnline ? 'Online' : 'Offline'}</span>
+        {/* Traffic Level Indicator */}
+        <div className="mt-3 flex items-center justify-between">
+          <span className="text-xs text-gray-500">Traffic Level</span>
+          <span 
+            className="text-xs font-medium capitalize px-2 py-0.5 rounded"
+            style={{ 
+              color: trafficColor.primary,
+              backgroundColor: trafficColor.bg,
+            }}
+          >
+            {camera.trafficLevel}
+          </span>
         </div>
       </div>
     </Card>
   )
 }
-
-export default CameraCard

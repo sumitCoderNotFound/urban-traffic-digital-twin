@@ -1,3 +1,7 @@
+/**
+ * Components Index - Export all components
+ */
+
 // Common Components
 export { default as Card } from './common/Card'
 export { default as Badge } from './common/Badge'
